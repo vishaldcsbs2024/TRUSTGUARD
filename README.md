@@ -1,12 +1,12 @@
 # TRUSTGUARD
-# 🛡️ TrustGuard — Intelligent Claims Fraud Detection for Guidewire
+#  TrustGuard — Intelligent Claims Fraud Detection for Guidewire
 
 > **Hackathon Submission | Guidewire Innovation Challenge**
 > An AI-powered, multi-signal fraud detection layer built natively on top of Guidewire ClaimCenter.
 
 ---
 
-## 🧭 The Problem
+##  The Problem
 
 Insurance fraud costs the global industry **over $80 billion annually**. Delivery and gig-economy claims are among the fastest-growing fraud vectors — agents gaming weather conditions, faking locations, and coordinating false reports at scale.
 
@@ -22,7 +22,7 @@ Traditional rule-based systems fail because:
 
 ---
 
-## 💡 Our Solution: TrustGuard
+##  Our Solution: TrustGuard
 
 TrustGuard is a **multi-layered intelligent fraud detection system** integrated into Guidewire ClaimCenter. It combines environmental fingerprinting, device integrity checks, graph-based fraud network detection, and a reputation economy to make fraud economically irrational — while keeping the experience frictionless for honest agents.
 
@@ -34,7 +34,7 @@ Instead of asking "does the GPS match?", we ask: **"Does the entire physical env
 
 ---
 
-## 👤 Who Is Our User?
+##  Who Is Our User?
 
 ### Primary Users
 
@@ -66,7 +66,7 @@ Under TrustGuard:
 
 ---
 
-## ⚙️ How the AI Actually Works
+##  How the AI Actually Works
 
 TrustGuard is built on **seven AI layers** that stack on top of each other, each one raising the cost of fraud.
 
@@ -225,7 +225,7 @@ This is cross-referenced against the claim and the weather API. A rain claim wit
 
 ---
 
-## 🔴 Adversarial Defense & Anti-Spoofing Strategy
+##  Adversarial Defense & Anti-Spoofing Strategy
 
 > **Critical Threat Response — DEVTrails 2026 Phase 1 Update**
 >
@@ -384,7 +384,7 @@ During economic downturns, fraudulent claims historically spike 30–40% as fina
 
 ---
 
-## 🏗️ Technical Architecture
+##  Technical Architecture
 
 ```
 Agent Mobile App (TrustGuard SDK)
@@ -431,7 +431,7 @@ Agent Mobile App (TrustGuard SDK)
 
 ---
 
-## 🔌 Guidewire Integration Points
+##  Guidewire Integration Points
 
 | ClaimCenter Feature | TrustGuard Integration |
 |---|---|
@@ -444,7 +444,7 @@ Agent Mobile App (TrustGuard SDK)
 
 ---
 
-## 📊 Expected Impact
+##  Expected Impact
 
 | Metric | Baseline | With TrustGuard |
 |---|---|---|
@@ -456,7 +456,7 @@ Agent Mobile App (TrustGuard SDK)
 
 ---
 
-## 👥 Team
+##  Team
 
 | Role | Responsibility |
 |---|---|
@@ -468,7 +468,7 @@ Agent Mobile App (TrustGuard SDK)
 
 ---
 
-## ⚖️ Ethics & Privacy
+##  Ethics & Privacy
 
 TrustGuard is built on a privacy-first architecture:
 
@@ -481,7 +481,7 @@ TrustGuard is built on a privacy-first architecture:
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```
 trustguard/
