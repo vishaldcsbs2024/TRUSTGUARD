@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { submitClaim, getAgents } from '../api';
+import { submitClaim, getAgents, issueChallenge, completeChallenge } from '../api';
 
 const MobileApp = () => {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState('');
-  
-  // Simulation presets
   const [scenario, setScenario] = useState('HONEST');
   
-  const [status, setStatus] = useState('IDLE'); // IDLE, SUBMITTING, DONE
+  const [status, setStatus] = useState('IDLE'); // IDLE, SUBMITTING, CHALLENGE, DONE
   const [result, setResult] = useState(null);
+  const [challenge, setChallenge] = useState(null);
+  const [challengeMessage, setChallengeMessage] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -24,15 +24,64 @@ const MobileApp = () => {
     init();
   }, []);
 
+  const buildChallengeProofPayload = (requiredProof) => {
+    if (requiredProof === 'gyroscope_rotation') {
+      const rotationValue = scenario === 'FRAUD_DEVICE' ? 120 : 360;
+      return { proof_type: 'gyroscope_rotation', value: rotationValue };
+    }
+
+    if (requiredProof === 'step_count') {
+      const stepCount = scenario === 'FRAUD_RING' ? 2 : 8;
+      return { proof_type: 'step_count', value: stepCount };
+    }
+
+    if (requiredProof === 'ambient_frame') {
+      const rainMatch = scenario !== 'FRAUD_WEATHER';
+      return { proof_type: 'ambient_frame', value: { rain_match: rainMatch } };
+    }
+
+    return { proof_type: requiredProof, value: null };
+  };
+
+  const handleCompleteChallenge = async () => {
+    if (!challenge) return;
+
+    setStatus('SUBMITTING');
+    setChallengeMessage('Submitting challenge proof...');
+
+    try {
+      await new Promise(r => setTimeout(r, 800));
+      const proofPayload = buildChallengeProofPayload(challenge.required_proof);
+      const response = await completeChallenge(challenge.id, proofPayload);
+
+      setResult((prev) => ({
+        ...prev,
+        status: response.claim.status,
+        trust_score: response.claim.trust_score,
+        guidewire_id: response.claim.guidewire_id,
+      }));
+
+      setChallenge(response.challenge);
+      setChallengeMessage(response.challenge.status === 'PASSED'
+        ? 'Challenge passed. Claim promoted for approval.'
+        : 'Challenge failed. Claim escalated as flagged.');
+      setStatus('DONE');
+    } catch (error) {
+      console.error(error);
+      setChallengeMessage('Unable to complete challenge. Please retry.');
+      setStatus('CHALLENGE');
+    }
+  };
+
   const handleSubmit = async () => {
     setStatus('SUBMITTING');
-    
-    // Simulate data collection based on chosen scenario
+    setChallenge(null);
+    setChallengeMessage('');
     let payload = {
       agent_id: selectedAgent,
       time_of_event: new Date().toISOString(),
       sensor_data: {
-        temperature_c: 22.0, // Weather API mock says 22.5
+        temperature_c: 22.0,
         light_lux: 800.0,
         ambient_noise_db: 45.0,
         gps_lat: 40.7128,
@@ -48,26 +97,29 @@ const MobileApp = () => {
     if (scenario === 'FRAUD_DEVICE') {
       payload.device_data.is_mock_location = true;
     } else if (scenario === 'FRAUD_WEATHER') {
-      // Claiming a blizzard while it's sunny
-      payload.sensor_data.temperature_c = -5.0; 
-      payload.sensor_data.ambient_noise_db = 15.0; // Suspiciously quiet
+      payload.sensor_data.temperature_c = -5.0;
+      payload.sensor_data.ambient_noise_db = 15.0;
     } else if (scenario === 'FRAUD_TIME') {
-      // Claiming event happened 2 days ago
       let d = new Date();
       d.setDate(d.getDate() - 2);
       payload.time_of_event = d.toISOString();
     } else if (scenario === 'FRAUD_RING') {
-      // Pick the suspicious driver if exists
       const fraudInst = agents.find(a => a.name.includes("fraud_"));
       if (fraudInst) payload.agent_id = fraudInst.id;
     }
 
     try {
-      // Add fake latency for UX
-      await new Promise(r => setTimeout(r, 1500)); 
+      await new Promise(r => setTimeout(r, 1500));
       const res = await submitClaim(payload);
       setResult(res);
-      setStatus('DONE');
+
+      if (res.status !== 'APPROVED') {
+        const activeChallenge = res.active_challenge || await issueChallenge(res.id);
+        setChallenge(activeChallenge);
+        setStatus('CHALLENGE');
+      } else {
+        setStatus('DONE');
+      }
     } catch (e) {
       console.error(e);
       setStatus('IDLE');
@@ -124,6 +176,44 @@ const MobileApp = () => {
             </div>
           )}
 
+          {status === 'CHALLENGE' && challenge && (
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              {challenge.status === 'EXPIRED' ? (
+                <>
+                  <h2 style={{ marginBottom: '1rem', color: 'var(--danger)' }}>Challenge Expired</h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Your verification window has closed. Please contact support to request a new challenge.
+                  </p>
+                  <button className="btn btn-outline btn-mobile" onClick={() => { setStatus('IDLE'); setResult(null); setChallenge(null); setChallengeMessage(''); }}>
+                    Back to Home
+                  </button>
+                </>
+              ) : challenge.status === 'FAILED' ? (
+                <>
+                  <h2 style={{ marginBottom: '1rem', color: 'var(--danger)' }}>Challenge Failed</h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Maximum attempts exceeded. Your claim has been escalated for manual review.
+                  </p>
+                  <button className="btn btn-outline btn-mobile" onClick={() => { setStatus('IDLE'); setResult(null); setChallenge(null); setChallengeMessage(''); }}>
+                    Back to Home
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 style={{ marginBottom: '1rem', color: 'var(--warning)' }}>Additional Verification Required</h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>{challenge.prompt}</p>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                    Required proof: {challenge.required_proof}
+                  </p>
+                  <button className="btn btn-primary btn-mobile" onClick={handleCompleteChallenge}>
+                    Complete Challenge
+                  </button>
+                  {challengeMessage && <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>{challengeMessage}</p>}
+                </>
+              )}
+            </div>
+          )}
+
           {status === 'DONE' && result && (
             <div style={{ textAlign: 'center', marginTop: '2rem' }}>
               <h2 style={{ marginBottom: '1rem', color: result.status === 'APPROVED' ? 'var(--success)' : result.status === 'FLAGGED' ? 'var(--danger)' : 'var(--warning)' }}>
@@ -132,9 +222,10 @@ const MobileApp = () => {
               <div style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem', color: result.trust_score >= 85 ? 'var(--success)' : result.trust_score >= 60 ? 'var(--warning)' : 'var(--danger)' }}>
                 {Math.round(result.trust_score)}
               </div>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Trust Score</p>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '0.8rem' }}>Trust Score</p>
+              {challengeMessage && <p style={{ color: 'var(--text-muted)', marginBottom: '1.2rem' }}>{challengeMessage}</p>}
               
-              <button className="btn btn-outline btn-mobile" onClick={() => { setStatus('IDLE'); setResult(null); }}>
+              <button className="btn btn-outline btn-mobile" onClick={() => { setStatus('IDLE'); setResult(null); setChallenge(null); setChallengeMessage(''); }}>
                 Submit Another
               </button>
             </div>

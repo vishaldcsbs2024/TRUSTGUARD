@@ -1,38 +1,62 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getKpis, getClaims } from '../api';
+import { getKpis, getClaims, seedDemoClaims, resetDemoData } from '../api';
 
 const Dashboard = () => {
   const [kpis, setKpis] = useState(null);
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState('');
+
+  const fetchData = async () => {
+    try {
+      const [kpiData, claimsData] = await Promise.all([
+        getKpis(),
+        getClaims()
+      ]);
+      setKpis(kpiData);
+      setClaims(claimsData);
+    } catch (err) {
+      console.error("Error fetching data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [kpiData, claimsData] = await Promise.all([
-          getKpis(),
-          getClaims()
-        ]);
-        setKpis(kpiData);
-        setClaims(claimsData);
-      } catch (err) {
-        console.error("Error fetching data", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
-    // Auto-refresh every 5 seconds for reality demo
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSeedDemo = async () => {
+    setSeeding(true);
+    setSeedMessage('Resetting old data and generating demo claims...');
+    try {
+      await resetDemoData();
+      const result = await seedDemoClaims(24);
+      setSeedMessage(`Generated ${result.created_claims} demo claims.`);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to seed demo data', err);
+      setSeedMessage('Could not generate demo claims. Ensure backend API is running.');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   if (loading) return <div>Loading Dashboard...</div>;
 
   return (
     <div>
       <h1 style={{ marginBottom: '1.5rem', fontWeight: 600 }}>TrustGuard Overview</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
+        <button className="btn btn-primary" onClick={handleSeedDemo} disabled={seeding}>
+          {seeding ? 'Generating...' : 'Generate Live Demo Data'}
+        </button>
+        {seedMessage && <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{seedMessage}</span>}
+      </div>
       
       <div className="grid-4">
         <div className="card" style={{ marginBottom: 0 }}>

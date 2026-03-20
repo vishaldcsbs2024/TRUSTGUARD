@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getClaimDetails } from '../api';
+import { getClaimDetails, overrideClaim } from '../api';
 import ScoreGauge from '../components/ScoreGauge';
 import { ArrowLeft, CheckCircle, AlertTriangle, XCircle, Activity } from 'lucide-react';
 
@@ -8,6 +8,10 @@ const ClaimDetails = () => {
   const { id } = useParams();
   const [claim, setClaim] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideAction, setOverrideAction] = useState('APPROVE');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [submittingOverride, setSubmittingOverride] = useState(false);
 
   useEffect(() => {
     const fetchClaim = async () => {
@@ -23,6 +27,33 @@ const ClaimDetails = () => {
     fetchClaim();
   }, [id]);
 
+  const handleOverride = async () => {
+    if (!overrideReason.trim()) {
+      alert('Please provide a reason for the override action.');
+      return;
+    }
+
+    setSubmittingOverride(true);
+    try {
+      const result = await overrideClaim(id, {
+        action: overrideAction,
+        reason: overrideReason,
+        investigator_id: 'INV_001'
+      });
+      alert(`Override successful. Claim status: ${result.claim.status}`);
+      setShowOverrideModal(false);
+      setOverrideReason('');
+      
+      const updatedClaim = await getClaimDetails(id);
+      setClaim(updatedClaim);
+    } catch (err) {
+      alert('Error applying override: ' + (err.response?.data?.detail || err.message));
+      console.error(err);
+    } finally {
+      setSubmittingOverride(false);
+    }
+  };
+
   if (loading) return <div>Loading Claim Details...</div>;
   if (!claim) return <div>Claim not found</div>;
 
@@ -31,7 +62,7 @@ const ClaimDetails = () => {
   return (
     <div>
       <div style={{ marginBottom: '1.5rem' }}>
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>
+        <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>
           <ArrowLeft size={18} style={{ marginRight: '0.5rem' }} /> Back to Dashboard
         </Link>
       </div>
@@ -86,23 +117,161 @@ const ClaimDetails = () => {
       </div>
 
       <div className="card">
-        <div className="card-header">Guidewire Integration Sync</div>
-        <div style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '6px', fontFamily: 'monospace', color: 'var(--text-main)' }}>
-          <div>[POST] /ClaimCenter/API/v1/Claims</div>
-          <br/>
-          <div>JSON Payload:</div>
-          <pre style={{ color: 'var(--primary)' }}>
-{JSON.stringify({
-  action: "UPDATE_STATUS",
-  status: claim.status,
-  fraud_score: Math.round(sd.overall_trust),
-  guidewire_id: claim.guidewire_id,
-  system: "TrustGuard"
-}, null, 2)}
-          </pre>
+        <div className="card-header">Investigator Actions</div>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => { setOverrideAction('APPROVE'); setShowOverrideModal(true); }}
+            style={{ 
+              padding: '0.75rem 1.5rem',
+              backgroundColor: 'var(--success)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '0.95rem'
+            }}
+          >
+            ✓ Override & Approve
+          </button>
+          <button 
+            onClick={() => { setOverrideAction('REJECT'); setShowOverrideModal(true); }}
+            style={{ 
+              padding: '0.75rem 1.5rem',
+              backgroundColor: 'var(--danger)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '0.95rem'
+            }}
+          >
+            ✗ Override & Reject
+          </button>
+          <button 
+            onClick={() => { setOverrideAction('REASSIGN'); setShowOverrideModal(true); }}
+            style={{ 
+              padding: '0.75rem 1.5rem',
+              backgroundColor: 'var(--warning)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '0.95rem'
+            }}
+          >
+            ⟳ Reassign for Manual Review
+          </button>
         </div>
+
+        {Array.isArray(claim.override_log) && claim.override_log.length > 0 && (
+          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <h4 style={{ marginBottom: '1rem', color: 'var(--text-main)', fontWeight: 600 }}>Override History</h4>
+            {claim.override_log.map((log, idx) => (
+              <div key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '0.9rem' }}>
+                <div style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                  {log.action} by {log.investigator_id} on {new Date(log.timestamp).toLocaleString()}
+                </div>
+                <div style={{ marginTop: '0.25rem', color: 'var(--text-muted)' }}>
+                  {log.original_status} → {log.new_status}
+                </div>
+                <div style={{ marginTop: '0.5rem', color: 'var(--text-main)', fontStyle: 'italic' }}>
+                  Reason: {log.reason}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {showOverrideModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)' }}>
+              Confirm Override Action
+            </h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              Action: <strong style={{ color: 'var(--primary)' }}>{overrideAction}</strong>
+            </p>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-main)' }}>
+                Reason for Override
+              </label>
+              <textarea
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Enter reason (e.g., 'Customer appeal with supporting documentation', 'Device error detected', etc.)"
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontFamily: 'inherit',
+                  fontSize: '0.95rem',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowOverrideModal(false)}
+                disabled={submittingOverride}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#f3f4f6',
+                  color: 'var(--text-main)',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  opacity: submittingOverride ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleOverride}
+                disabled={submittingOverride}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: overrideAction === 'APPROVE' ? 'var(--success)' : 'var(--danger)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 500,
+                  cursor: submittingOverride ? 'not-allowed' : 'pointer',
+                  opacity: submittingOverride ? 0.7 : 1
+                }}
+              >
+                {submittingOverride ? 'Processing...' : 'Confirm Override'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
