@@ -52,7 +52,7 @@ Instead of asking "does the GPS match?", we ask: **"Does the entire physical env
 - Need dashboards showing fraud rates, savings, and system trust scores
 - Responsible for compliance and audit trails
 
-### The Persona Problem Honest Agents Face
+### The Personal Problem Honest Agents Face
 
 An honest delivery agent caught in a rainstorm files a claim. Under legacy systems:
 - Manual review: 3–5 days
