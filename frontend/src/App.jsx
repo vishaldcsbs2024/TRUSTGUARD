@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-do
 import Dashboard from './pages/Dashboard';
 import ClaimDetails from './pages/ClaimDetails';
 import MobileApp from './pages/MobileApp';
+import AIHub from './pages/AIHub';
 import {
   ShieldCheck,
   Radar,
@@ -20,6 +21,10 @@ import {
   Database,
   ArrowRight,
   FileCheck2,
+  ShieldAlert,
+  Siren,
+  Bot,
+  Wifi,
 } from 'lucide-react';
 
 const layers = [
@@ -70,6 +75,56 @@ const counters = [
   { attack: 'Stationary-at-Home Fraud', counter: 'Accelerometer micro-motion and ambient profile checks' },
   { attack: 'Mass Burst Ring Claims', counter: 'Temporal clustering alerts and zone-level payout hold' },
   { attack: 'Cell Tower Mismatch', counter: 'Hardware-level network location cross-reference' },
+];
+
+const defenseConsole = [
+  {
+    title: 'Syndicate Spike Monitor',
+    signal: '215 claims in 12 min vs baseline 42',
+    action: 'Freeze auto-payout in Zone 7A and queue investigator alerts',
+    severity: 'CRITICAL',
+    icon: <Siren size={18} />,
+  },
+  {
+    title: 'Reality Coherence Drift',
+    signal: 'Temp + light + ambient noise mismatch in 64% of flagged claims',
+    action: 'Require passive resampling and stage-3 liveness for unresolved claims',
+    severity: 'HIGH',
+    icon: <ShieldAlert size={18} />,
+  },
+  {
+    title: 'Automation Fingerprint',
+    signal: 'Identical claim text entropy and emulator-like sensor signatures',
+    action: 'Escalate to graph ring review and reputation contagion checks',
+    severity: 'HIGH',
+    icon: <Bot size={18} />,
+  },
+  {
+    title: 'Network Tower Mismatch',
+    signal: 'Claimed GPS zone differs from observed tower region cluster',
+    action: 'Shift claim to manual verification with pre-filled evidence packet',
+    severity: 'MEDIUM',
+    icon: <Wifi size={18} />,
+  },
+];
+
+const defensePipeline = [
+  {
+    step: 'Detect',
+    detail: 'Ring indicators trigger from temporal spikes, device overlap, and coherence mismatch.',
+  },
+  {
+    step: 'Contain',
+    detail: 'Zone-level payout guardrail activates while honest claims remain in neutral messaging flow.',
+  },
+  {
+    step: 'Verify',
+    detail: 'Passive rechecks + lightweight liveness challenge separate genuine edge cases from scripted fraud.',
+  },
+  {
+    step: 'Resolve',
+    detail: 'Guidewire investigator queue receives explainable reasons, risk score, and recommended disposition.',
+  },
 ];
 
 const metrics = [
@@ -131,7 +186,7 @@ const techStack = [
 
 const marketingNav = [
   { to: '/', label: 'Overview' },
-  { to: '/ai-layers', label: 'AI Layers' },
+  { to: '/ai-hub', label: 'AI Hub' },
   { to: '/defense', label: 'Defense' },
   { to: '/architecture', label: 'Architecture' },
   { to: '/impact', label: 'Impact' },
@@ -177,7 +232,7 @@ const OverviewPage = () => (
         coordinated ring fraud while keeping honest agents fast, frictionless, and fairly treated.
       </p>
       <div className="hero-cta-row">
-        <NavLink className="btn-primary" to="/ai-layers">Explore AI Layers</NavLink>
+        <NavLink className="btn-primary" to="/ai-hub">Explore AI Hub</NavLink>
         <NavLink className="btn-ghost" to="/integrations">See Guidewire Integration</NavLink>
       </div>
       <div className="hero-grid">
@@ -292,6 +347,37 @@ const DefensePage = () => (
         <article className="panel" key={step.stage}>
           <h3>{step.stage}</h3>
           <p>{step.detail}</p>
+        </article>
+      ))}
+    </div>
+
+    <div className="section-head">
+      <h2>Defense Frontend Console</h2>
+      <p>Operational cards surface active threat signals, automatic actions, and investigation intent in real time.</p>
+    </div>
+    <div className="defense-console-grid">
+      {defenseConsole.map((item) => (
+        <article className="defense-console-card" key={item.title}>
+          <div className="defense-console-head">
+            <div className="feature-icon">{item.icon}</div>
+            <span className={`defense-severity ${item.severity.toLowerCase()}`}>{item.severity}</span>
+          </div>
+          <h3>{item.title}</h3>
+          <p><strong>Signal:</strong> {item.signal}</p>
+          <p><strong>Auto Action:</strong> {item.action}</p>
+        </article>
+      ))}
+    </div>
+
+    <div className="section-head">
+      <h2>Syndicate Response Pipeline</h2>
+      <p>Clear workflow from detection to investigator decision, built for high-volume incident windows.</p>
+    </div>
+    <div className="pipeline-grid">
+      {defensePipeline.map((item) => (
+        <article className="pipeline-card" key={item.step}>
+          <span>{item.step}</span>
+          <p>{item.detail}</p>
         </article>
       ))}
     </div>
@@ -428,6 +514,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppShell><OverviewPage /></AppShell>} />
+        <Route path="/ai-hub" element={<AppShell><AIHub /></AppShell>} />
         <Route path="/ai-layers" element={<AppShell><LayersPage /></AppShell>} />
         <Route path="/defense" element={<AppShell><DefensePage /></AppShell>} />
         <Route path="/architecture" element={<AppShell><ArchitecturePage /></AppShell>} />
@@ -437,7 +524,7 @@ function App() {
         <Route path="/mobile" element={<MobileApp />} />
         <Route path="/claim/:id" element={<AppShell><section className="section shell"><ClaimDetails /></section></AppShell>} />
 
-        <Route path="/features" element={<Navigate to="/ai-layers" replace />} />
+        <Route path="/features" element={<Navigate to="/ai-hub" replace />} />
         <Route path="/security" element={<Navigate to="/defense" replace />} />
         <Route path="/results" element={<Navigate to="/impact" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
